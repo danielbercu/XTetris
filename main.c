@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <math.h>
 
-#define array_size(t) (int)sizeof(t)/sizeof(int) // Only works where arrays are initialized as such, rather than pointers (e.g. in the main function)
-#define pipo(t) (int)sqrt(t_size(t))			 // As stated above 
-#define edge(t) (int)sqrt(t.size)				 // General way to get the size of the edge of a square matrix, with the further declaration of tetramino_t
+#define array_size(t) (int)sizeof(t)/sizeof(int)	// Only works where arrays are declared as such, rather than pointers (e.g. in the main function)
+#define pipo(t) (int)sqrt(array_size(t))			// As stated above 
+#define edge(t) (int)sqrt(t.size)					// General way to get the size of the edge of a square matrix, with the further declaration of tetramino_t
 
 typedef struct tetramino{
 	int* data;
@@ -59,13 +59,94 @@ void t_print(tetramino_t t){
 			printf("%d ", t.data[j + i * l]);
 		printf("\n");
 	}
+	printf("\n");
 }
 
-void place_in_field(int* field, int l, tetramino_t t, int x, int y){
+void t_place_aux_f(int* field, int l, tetramino_t t, int x, int y){	// statically
 	int i, j, m = edge(t);
 	for (i = 0; i < m; i++)
 		for (j = 0; j < m; j++)
 			field[x + j + i * l + y * l] = t.data[j + i * m];
+}
+
+//void t_place_main_f(int* field, int l, tetramino_t t, int x);
+//	int i, j, m = edge(t);
+//	for (i = 0; i < m; i++)
+//		for (j = 0; j < m; j++)
+//			field[x + j + i * l] = t.data[j + i * m];
+
+//void move_in_fields(int* field, int* aux_field, int l, tetramino_t t, int x, int y){
+//	char input;
+//	x = y = 0;
+//	scanf("%c", &input);
+//	do{
+//		switch (input){
+//			case /*right*/:
+//				x++;
+//				t_place_aux_f(aux_field, l, t, x, y);
+//				f_print(aux_field, h, l);
+//				break;
+//			case /*left*/:
+//				x--;
+//				t_place_aux_f(aux_field, l, t, x, y);
+//				f_print(aux_field, h, l);
+//				break;
+//			case /*up*/:
+//				y++;
+//				t_place_aux_f(aux_field, l, t, x, y);
+//				f_print(aux_field, h, l);
+//				break;
+//			case /*down*/:
+//				y--;
+//				t_place_aux_f(aux_field, l, t, x, y);
+//				f_print(aux_field, h, l);
+//				break;
+//			case /*enter*/:
+//				t_place_main_f(field, l, t, x);
+//				break;
+//			default:
+//				scanf("%c", &input);
+//				break;
+//		}
+//	} while (input != /*right, left, up, down or Enter key is pressed*/);
+//}
+
+
+tetramino_t t_select(void){
+	int t;
+	tetramino_t T;
+	printf("Seleziona un tetramino: ");
+	scanf("%d", &t);
+	do{
+		switch (t){
+		case 1:
+			T = t_create(T1, array_size(T1));
+			break;
+		case 2:
+			T = t_create(T2, array_size(T2));
+			break;
+		case 3:
+			T = t_create(T3, array_size(T3));
+			break;
+		case 4:
+			T = t_create(T4, array_size(T4));
+			break;
+		case 5:
+			T = t_create(T5, array_size(T5));
+			break;
+		case 6:
+			T = t_create(T6, array_size(T6));
+			break;
+		case 7:
+			T = t_create(T7, array_size(T7));
+			break;
+		default:
+			printf("Inserisci un numero valido: ");
+			scanf("%d", &t);
+			break;
+		}
+	} while (t < 1 || t > 7);
+	return T;
 }
 
 void f_print(int* field, int h, int l){
@@ -99,24 +180,22 @@ int* f_create(int h, int l){
 }
 
 int main(){
-	int *field, *temp_field;
-	int h = 15, l = 10;
-	temp_field = f_create(4, l);
+	int *field, *aux_field;
+	tetramino_t T;
+	int h = 15, l = 10, h_aux = 4;
+	aux_field = f_create(4, l);
 	field = f_create(h, l);
-	f_clear(temp_field, 4, l);
+	f_clear(aux_field, h_aux, l);
 	f_clear(field, h, l);
-
-	tetramino_t T = t_create(T1, array_size(T1));
-	tetramino_t I = t_create(T2, array_size(T2));
-	tetramino_t minchia = t_create(T3, array_size(T3));
-
-	t_rotate(I);
-	t_rotate(T);
-
-	place_in_field(field, l, I, 0, 0);
-	place_in_field(field, l, T, 0, 0);
-	f_print(temp_field, 4, l);
+	f_print(aux_field, h_aux, l);
 	f_print(field, h, l);
+
+	T = t_select();
+	t_print(T);
+	t_rotate(T);
+	t_print(T);
+	t_place_aux_f(aux_field, l, T, 0, 0);
+	f_print(aux_field, h_aux, l);
 
 	return 0;
 }
