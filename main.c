@@ -3,11 +3,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <termios.h>
 
 #define edge(t)                                                                \
   (int)sqrt(t.size) // General way to get the size of the edge of a square
                     // matrix, with the further declaration of tetramino_t
-#define clear() printf("\033[1;1H")
+#define clear() printf("\033[1;1H") //printf("\033[1;1H") or printf("\033[1;1H\033[2J")
 #define hide_cursor() printf("\033[?25l")
 #define show_cursor() printf("\033[?25h")
 #define block_c "■" // ■ or ⬛
@@ -15,6 +16,8 @@
 const int h = 20, l = 12,
           area = h * l; //  4 rows for initial placement, 15 rows for the main
                         //  field and 1 for the ground
+
+struct termios orig_termios;
 
 typedef struct tetramino {
   int *data;
@@ -44,6 +47,24 @@ int T7[4] = {7, 7,
              7, 7}; // O
 
 tetramino_t Ts[] = {{T1, 9}, {T2, 16}, {T3, 9}, {T4, 9}, {T5, 9}, {T6, 9},  {T7, 4}};
+
+int msleep(unsigned int tms) {
+  return usleep(tms * 1000);
+}
+
+void disableRawMode(){
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
+}
+
+void enableRawMode(){
+    tcgetattr(STDIN_FILENO, &orig_termios);
+    atexit(disableRawMode);
+
+    struct termios raw = orig_termios;
+    raw.c_lflag &= ~(ECHO | ICANON);
+
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+}
 
 tetramino_t t_create(int *src, int size) {
   tetramino_t t;
@@ -141,77 +162,6 @@ int *f_create(int h, int l) {
   return field;
 }
 
-void t_move(int *field, tetramino_t t) {
-  int x = 5, y = 0;
-  if (getchar() == '\033') {
-    getchar();
-    switch (getchar()) {
-    case 'A':
-      t_rotate(t);
-      t_place(field, t, x, y);
-      f_print(field);
-      break;
-    case 'B':
-      y++;
-      t_place(field, t, x, y);
-      f_print(field);
-      break;
-    case 'C':
-      x++;
-      t_place(field, t, x, y);
-      f_print(field);
-      break;
-    case 'D':
-      x--;
-      t_place(field, t, x, y);
-      f_print(field);
-      break;
-    }
-  } else if (getchar() == '\n')
-    t_place(field, t, x, 14);
-  //	do{
-  //		switch (input){
-  //			case /*right*/:
-  //				x++;
-  //				t_place(field, l, t, x, y);
-  //				f_print(field, h, l);
-  //				break;
-  //			case /*left*/:
-  //				x--;
-  //				t_place(field, l, t, x, y);
-  //				f_print(field, h, l);
-  //				break;
-  //			case /*up*/:									//
-  //actually this one shouldn't be working, as in tetris u cant move ur piece up
-  // y--; 				t_place(field, l, t, x, y); 				f_print(field, h, l); 				break; 			case /*down*/:
-  //				y++;
-  //				t_place(field, l, t, x, y);
-  //				f_print(field, h, l);
-  //				break;
-  //		//	case /*enter*/:
-  //		//		t_place(field, l, t, x, y);
-  //				break;
-  //			case r:
-  //				t_rotate(t);
-  //				break;
-  //			default:
-  //				scanf("%c", &input);
-  //				break;
-  //		}
-  //	} while (input != Enter*/);
-}
-
-// void movimento(int *field, int h, int l, tetramino_t t, int x, int y) {
-//  clear();
-//  t_place(temp_1, l, t, x, y);
-//  f_print(temp_1, h, l);
-//  printf("\n");
-//  memcpy(temp_2, temp_1, sizeof(int) * area);
-//  memcpy(temp_1, field, sizeof(int) * area);
-//  sleep(1);
-//  clear();
-//}
-
 int t_collision(int *field, tetramino_t t, int x, int y, char dir) {
   int i, j, found;
     switch (dir){
@@ -248,24 +198,42 @@ int t_collision(int *field, tetramino_t t, int x, int y, char dir) {
     }
 }
 
-void t_gravity(int *field, tetramino_t t, int x, int y) {
-  int i;
+void t_gravity(int *field, tetramino_t t, int x, int y, int lvl) {
   char dir = 'd';
+  int msec;
   int *temp_1 = f_create(h, l);
   int *temp_2 = f_create(h, l);
   memcpy(temp_1, field, sizeof(int) * area);
   memcpy(temp_2, field, sizeof(int) * area);
   hide_cursor();
-  while (1) {
-    if (t_collision(field, t, x, y, dir))
+  switch (lvl){
+    case 1:
+      msec = 1000;
       break;
+    case 2:
+      msec = 700;
+      break;
+    case 3:
+      msec = 500;
+      break;
+    case 4:
+      msec = 400;
+      break;
+    case 5:
+      msec = 300;
+      break;
+    case 99:
+      msec = 10;
+      break;
+  }
+  while (!t_collision(field, t, x, y, dir)){
     clear();
     t_place(temp_1, t, x, y++);
     f_print(temp_1);
     printf("\n");
     memcpy(temp_2, temp_1, sizeof(int) * area);
     memcpy(temp_1, field, sizeof(int) * area);
-    sleep(1);
+    msleep(msec);
     clear();
   }
   memcpy(field, temp_2, sizeof(int) * area);
@@ -275,11 +243,67 @@ void t_gravity(int *field, tetramino_t t, int x, int y) {
   free(temp_2);
 }
 
+void t_move(int *field, tetramino_t t, int x, int y) {
+    int i;
+    char dir;
+    char k;
+    int *temp_1 = f_create(h,l);
+    int *temp_2 = f_create(h,l);
+    tetramino_t temp = t_create(t.data, t.size);
+    memcpy(temp_1, field, sizeof(int) * area);
+    memcpy(temp_2, field, sizeof(int) * area);
+    hide_cursor();
+    enableRawMode();
+    do{
+      scanf("%c", &k);
+      switch (k){
+        case 'w':
+          t_rotate(temp);
+          if (!t_collision(temp_1, temp, x, y, dir))
+            t_rotate(t);
+          else
+            for (i = 0; i < 3; i++)
+              t_rotate(temp);
+          break;
+        case 's':
+          dir = 'd';
+          if (!t_collision(temp_1, t, x, y + 1, dir))
+            y++;
+          break;
+        case 'd':
+          dir = 'r';
+          if (!t_collision(temp_1, t, x + 1, y, dir))
+            x++;
+          break;
+        case 'a':
+          dir = 'l';
+          if (!t_collision(temp_1, t, x - 1, y, dir))
+            x--;
+          break;
+        }
+      clear();  
+      t_place(temp_1, t, x, y);
+      f_print(temp_1);
+      printf("\n");
+      memcpy(temp_2, temp_1, sizeof(int) * area);
+      memcpy(temp_1, field, sizeof(int) * area);
+      if (k == 'e') t_gravity(field, t, x, y, 99);
+      clear();
+    } while (k != 'e');
+    disableRawMode();
+    clear();
+    f_print(field);
+    show_cursor();
+    free(temp_1);
+    free(temp_2);
+    free(temp.data);
+    }
+
 int main() {
   int *field;
   tetramino_t T;
-  int x = 5, y = 0; //	starting position for our tetraminos
-
+  int x = 4, y = 0; //	starting position for our tetraminos
+  
   system("clear");
 
   field = f_create(h, l);
@@ -287,6 +311,8 @@ int main() {
   f_print(field);
 
   T = t_select();
-  t_gravity(field, T, x, y);
+  t_move(field, T, x, y);
+  T = t_select();
+  t_move(field, T, x, y);
   return 0;
 }
