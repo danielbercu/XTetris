@@ -12,6 +12,7 @@
   printf("\033[1;1H") // printf("\033[1;1H") or printf("\033[1;1H\033[2J")
 #define cursor_hide() printf("\033[?25l")
 #define cursor_show() printf("\033[?25h")
+#define line_delete() printf("\033[2K\r");
 #define block_c "■" // ■ or ⬛
 
 const int h = 20, l = 12,
@@ -104,17 +105,6 @@ void t_place(int *field, tetramino_t t, int x, int y) { // statically
     }
 }
 
-tetramino_t t_select() {
-  int t;
-  printf("Seleziona un tetramino: ");
-  scanf("%d", &t);
-  while (t < 1 || t > 7){
-    printf("Inserisci un numero valido: ");
-    scanf("%d", &t);
-  }
-  return t_create(Ts[t - 1].data, Ts[t - 1].size);
-}
-
 void f_print(int *field) {
   int i, j, k = 15;
   for (i = 0; i < 4; i++) {
@@ -138,6 +128,24 @@ void f_print(int *field) {
   for (i = 1; i < l - 1; i++)
     printf(" %d", i);
   printf("\n\n");
+}
+
+tetramino_t t_select(int *field) {
+  int t;
+  printf("Seleziona un tetramino: ");
+  scanf("%d", &t);
+  system("clear");
+  f_print(field);
+  while (t < 1 || t > 7){
+    clear();
+    line_delete();
+    f_print(field);
+    printf("Inserisci un numero valido: ");
+    scanf("%d", &t);
+    clear();
+    system("clear");
+  }
+  return t_create(Ts[t - 1].data, Ts[t - 1].size);
 }
 
 void f_clear(int *field) {
@@ -322,7 +330,7 @@ int main() {
   f_print(field);
 
   while (!game_over) {
-    T = t_select();
+    T = t_select(field);
     t_move(field, T, x, y);
     free(T.data);
     for (i = 3 * l + 1; i < 4 * l - 1; i++)
