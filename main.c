@@ -108,15 +108,11 @@ tetramino_t t_select() {
   int t;
   printf("Seleziona un tetramino: ");
   scanf("%d", &t);
-  do {
-    if (t > 0 && t < 8) {
-      printf("\n");
-      return t_create(Ts[t - 1].data, Ts[t - 1].size);
-    } else {
-      printf("Inserisci un numero valido: ");
-      scanf("%d", &t);
-    }
-  } while (t < 1 || t > 7);
+  while (t < 1 || t > 7){
+    printf("Inserisci un numero valido: ");
+    scanf("%d", &t);
+  }
+  return t_create(Ts[t - 1].data, Ts[t - 1].size);
 }
 
 void f_print(int *field) {
