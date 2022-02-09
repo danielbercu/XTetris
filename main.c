@@ -12,14 +12,11 @@
   printf("\033[1;1H") // printf("\033[1;1H") or printf("\033[1;1H\033[2J")
 #define cursor_hide() printf("\033[?25l")
 #define cursor_show() printf("\033[?25h")
-#define line_delete() printf("\033[2K\r");
 #define block_c "■" // ■ or ⬛
 
 const int h = 20, l = 12,
           area = h * l; //  4 rows for initial placement, 15 rows for the main
                         //  field and 1 for the ground
-
-struct termios original;
 
 typedef struct tetramino {
   int *data;
@@ -35,10 +32,10 @@ int T2[16] = {0, 0, 2, 0,
               0, 0, 2, 0};  // I
 int T3[9] = {0, 3, 3, 
              3, 3, 0,
-             0, 0, 0};      // N1
+             0, 0, 0};      // S
 int T4[9] = {4, 4, 0, 
              0, 4, 4,
-             0, 0, 0};      // N2
+             0, 0, 0};      // Z
 int T5[9] = {5, 5, 5,
              5, 0, 0,
              0, 0, 0};      // L
@@ -51,19 +48,27 @@ int T7[4] = {7, 7,
 tetramino_t Ts[] = {{T1, 9}, {T2, 16}, {T3, 9}, {T4, 9},
                     {T5, 9}, {T6, 9},  {T7, 4}};
 
+char shapes[] = "TISZLJO";
+
+struct termios canon;
+
 int msleep(unsigned int tms) { return usleep(tms * 1000); }
 
-void raw_disable() { tcsetattr(STDIN_FILENO, TCSAFLUSH, &original); }
-
 void raw_enable() {
-  tcgetattr(STDIN_FILENO, &original);
-  atexit(raw_disable);
+  struct termios raw;
 
-  struct termios raw = original;
-  raw.c_lflag &= ~(ECHO | ICANON);
+  tcgetattr(0, &canon);
+  raw = canon;
+  raw.c_lflag &= ~ECHO;
+  raw.c_lflag &= ~ICANON;
+  raw.c_lflag &= ~ISIG;
+  raw.c_cc[VMIN] = 0;
+  raw.c_cc[VTIME] = 0;
 
-  tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+  tcsetattr(0, TCSANOW, &raw);
 }
+
+void raw_disable() { tcsetattr(0, TCSANOW, &canon); }
 
 tetramino_t t_create(int *src, int size) {
   tetramino_t t;
@@ -75,40 +80,55 @@ tetramino_t t_create(int *src, int size) {
   return t;
 }
 
+void stats_print(int points, int* pieces){
+  int i;
+  printf("\n  Punti: %d\n  Tetramini rimasti:\n\n     Numero tetramino:     ", points);
+
+    for (i = 0; i < 7; i++)
+      printf("\033[0;%dm%d\033[0m   ", 31 + i, i + 1);
+    printf("\n     Forma tetramino:      ");
+    for (i = 0; i < 7; i++)
+      printf("\033[1;%dm%c\033[0m   ", 31 + i, shapes[i]);
+    printf("\n     Pezzi rimasti:       ");
+    for (i = 0; i < 7; i++)
+      printf("\033[4;%dm%d\033[0m  ", 31 + i, pieces[i]);
+    printf("\n\n");
+}
+
 void t_rotate(tetramino_t t) {
-  int i, j, l = edge(t);
+  int i, j, e = edge(t);
   tetramino_t temp = t_create(t.data, t.size);
-  for (i = 0; i < l; i++)
-    for (j = 0; j < l; j++)
-      t.data[j + i * l] = temp.data[j * l + l - i - 1];
+  for (i = 0; i < e; i++)
+    for (j = 0; j < e; j++)
+      t.data[j + i * e] = temp.data[j * e + e - i - 1];
   free(temp.data);
 }
 
 void t_print(tetramino_t t) {
-  int i, j, l = edge(t);
-  for (i = 0; i < l; i++) {
-    for (j = 0; j < l; j++)
-      printf("%d ", t.data[j + i * l]);
+  int i, j, e = edge(t);
+  for (i = 0; i < e; i++) {
+    for (j = 0; j < e; j++)
+      printf("%d ", t.data[j + i * e]);
     printf("\n");
   }
   printf("\n");
 }
 
 void t_place(int *field, tetramino_t t, int x, int y) { // statically
-  int i, j, m = edge(t);
-  for (i = 0; i < m; i++)
-    for (j = 0; j < m; j++) {
-      if (field[x + j + (y + i) * l] != 0 && t.data[j + i * m] == 0)
+  int i, j, e = edge(t);
+  for (i = 0; i < e; i++)
+    for (j = 0; j < e; j++) {
+      if (field[x + j + (y + i) * l] != 0 && t.data[j + i * e] == 0)
         continue;
       if (field[x + j + (y + i) * l] == 0)
-        field[x + j + (y + i) * l] = t.data[j + i * m];
+        field[x + j + (y + i) * l] = t.data[j + i * e];
     }
 }
 
 void f_print(int *field) {
   int i, j, k = 15;
   for (i = 0; i < 4; i++) {
-    printf("     ");
+    printf("       ");
     for (j = 1; j < l - 1; j++)
       printf("\033[0;%dm%s \033[0m", 30 + field[j + i * l], block_c);
     printf("\n");
@@ -116,36 +136,47 @@ void f_print(int *field) {
   for (i = 4; i < h - 1; i++, k--) {
     if (k < 10)
       printf(" ");
-    printf("%d ║ ", k);
+    printf("  %d ║ ", k);
     for (j = 1; j < l - 1; j++)
       printf("\033[0;%dm%s \033[0m", 30 + field[j + i * l], block_c);
     printf("║\n");
   }
-  printf("   ╚");
+  printf("     ╚");
   for (i = 0; i < 2 * l - 3; i++)
     printf("═");
-  printf("╝\n    ");
+  printf("╝\n      ");
   for (i = 1; i < l - 1; i++)
     printf(" %d", i);
   printf("\n\n");
 }
 
-tetramino_t t_select(int *field) {
+tetramino_t t_select(int *field, int* pieces, int points) {
   int t;
-  printf("Seleziona un tetramino: ");
+  printf("  Seleziona un tetramino: ");
   scanf("%d", &t);
   system("clear");
   f_print(field);
-  while (t < 1 || t > 7){
-    clear();
-    line_delete();
+  if (t > 0 && t < 8 && pieces[t - 1]){
+    pieces[t - 1]--;
+    stats_print(points, pieces);
+    return t_create(Ts[t - 1].data, Ts[t - 1].size);
+  }
+  while (t < 1 || t > 7 || !pieces[t - 1]){
+    system("clear");
     f_print(field);
-    printf("Inserisci un numero valido: ");
+    stats_print(points, pieces);
+    printf("  Inserisci un numero valido: ");
     scanf("%d", &t);
+    if (t > 0 && t < 8 && pieces[t - 1]){
+      pieces[t - 1]--;
+      system("clear");
+      f_print(field);
+      stats_print(points, pieces);
+      return t_create(Ts[t - 1].data, Ts[t - 1].size);
+    }
     clear();
     system("clear");
   }
-  return t_create(Ts[t - 1].data, Ts[t - 1].size);
 }
 
 void f_clear(int *field) {
@@ -165,33 +196,33 @@ int *f_create(int h, int l) {
 }
 
 int t_collision(int *field, tetramino_t t, int x, int y, char dir) {
-  int i, j, found;
+  int i, j, found, e = edge(t);
   switch (dir) {
   case 'd': // down movement
-    for (i = 0; i < edge(t); i++) {
+    for (i = 0; i < e; i++) {
       found = 0;
-      for (j = edge(t) - 1; j >= 0; j--) {
-        found = t.data[i + j * edge(t)] != 0;
+      for (j = e - 1; j >= 0; j--) {
+        found = t.data[i + j * e] != 0;
         if (found && field[x + i + (y + j) * l] != 0)
           return 1;
       }
     }
     return 0;
   case 'r': // right movement
-    for (i = 0; i < edge(t); i++) {
+    for (i = 0; i < e; i++) {
       found = 0;
-      for (j = edge(t) - 1; j >= 0; j--) {
-        found = t.data[j + i * edge(t)] != 0;
+      for (j = e - 1; j >= 0; j--) {
+        found = t.data[j + i * e] != 0;
         if (found && field[x + j + (y + i) * l] != 0)
           return 1;
       }
     }
     return 0;
   case 'l': // left movement
-    for (i = 0; i < edge(t); i++) {
+    for (i = 0; i < e; i++) {
       found = 0;
-      for (j = 0; j < edge(t); j++) {
-        found = t.data[j + i * edge(t)] != 0;
+      for (j = 0; j < e; j++) {
+        found = t.data[j + i * e] != 0;
         if (found && field[x + j + (y + i) * l] != 0)
           return 1;
       }
@@ -202,7 +233,7 @@ int t_collision(int *field, tetramino_t t, int x, int y, char dir) {
 
 void t_gravity(int *field, tetramino_t t, int x, int y, int lvl) {
   char dir = 'd';
-  int msec;
+  int tms;
   int *temp_1 = f_create(h, l);
   int *temp_2 = f_create(h, l);
   memcpy(temp_1, field, sizeof(int) * area);
@@ -210,22 +241,22 @@ void t_gravity(int *field, tetramino_t t, int x, int y, int lvl) {
   cursor_hide();
   switch (lvl) {
   case 1:
-    msec = 1000;
+    tms = 1000;
     break;
   case 2:
-    msec = 700;
+    tms = 700;
     break;
   case 3:
-    msec = 500;
+    tms = 500;
     break;
   case 4:
-    msec = 400;
+    tms = 400;
     break;
   case 5:
-    msec = 300;
+    tms = 300;
     break;
   case 99:
-    msec = 10;
+    tms = 10;
     break;
   }
   while (!t_collision(field, t, x, y, dir)) {
@@ -235,7 +266,7 @@ void t_gravity(int *field, tetramino_t t, int x, int y, int lvl) {
     printf("\n");
     memcpy(temp_2, temp_1, sizeof(int) * area);
     memcpy(temp_1, field, sizeof(int) * area);
-    msleep(msec);
+    msleep(tms);
     clear();
   }
   memcpy(field, temp_2, sizeof(int) * area);
@@ -269,12 +300,12 @@ void t_move(int *field, tetramino_t t, int x, int y) {
       break;
     case 's':
       dir = 'd';
-      if (!t_collision(temp_1, t, x, y + 2, dir)) { // or y + 1 
+      if (!t_collision(temp_1, t, x, y + 1, dir)) { // or y + 2 
         y++;
         break;
       } else {
         clear();
-        t_place(field, t, x, y + 1); // or y
+        t_place(field, t, x, y); // or y + 1
         f_print(field);
         raw_disable();
         cursor_show();
@@ -315,28 +346,109 @@ void t_move(int *field, tetramino_t t, int x, int y) {
   free(temp.data);
 }
 
+int is_game_over(int* field, int* pieces){
+  int i;
+  for (i = 3 * l + 1; i < 4 * l - 1; i++)
+      if (field[i])
+        return 1;
+  for (i = 0; i < sizeof(pieces)/sizeof(int); i++){
+      if (pieces[i]) break;
+      if ((i == sizeof(pieces)/sizeof(int) - 1) && !pieces[i])
+        return 1;
+    }
+  return 0;
+}
+
+void count_points(int* field, int *points){
+  int i, j, count = 0;
+  for (i = 4; i < h - 1; i++){
+    for (j = 1; j < l - 1; j++){
+      if (!field[j + i * l])
+        break;
+      if ((j == l - 2) && field[j + i * l]) count++;
+    }
+  }
+  switch (count){
+        case 0:
+          break;
+        case 1:
+          (*points)++;
+          break;
+        case 2:
+          *points = *points + 3;
+          break;
+        case 3:
+          *points = *points + 6;
+          break;
+        case 4:
+          *points = *points + 12;
+          break;
+        default:
+          *points = *points + 12;
+          break;
+      }
+}
+
+//void reverse_lines(int* field){     //mp
+//  int i, j, row_is_1 = 1;
+//  int* reversed = malloc(sizeof(int) * l - 2);
+//  for (i = h - 2; i > 3; i--){
+//    k = 0;
+//    for (j = 1; j < l - 1; j++){
+//      row_is_1 = field[j + i * l] != 0;
+//      if (!row_is_1)
+//        break;
+//      if (field[j + i * l])
+//        reversed[k++] = 7;
+//    }
+//  }
+//}
+
+void check_lines(int* field){
+  int i, j, k, q;
+  for (i = h - 2; i > 3; i--){
+    for (j = 1; j < l - 1; j++){
+      if (!field[j + i * l])
+        break;
+      if ((j == l - 2) && field[j + i * l]){
+        for (k = 1; k < l - 1; k++)
+          for (q = i; q > 3; q--)
+            field[k + (q) * l] = field[k + (q - 1) * l];
+          check_lines(field);
+      }
+    }
+  }
+}
+
 int main() {
   int *field;
   tetramino_t T;
   int x = 4, y = 0; //	starting position for our tetraminos
-  int i;
-
+  int i, j;
+  int points = 0, count = 0;
   int game_over = 0;
-
+  int pieces[7] = {20, 20, 20, 20, 20, 20, 20};
+  
   system("clear");
 
   field = f_create(h, l);
   f_clear(field);
   f_print(field);
+  stats_print(points, pieces);
 
   while (!game_over) {
-    T = t_select(field);
+    T = t_select(field, pieces, points);
     t_move(field, T, x, y);
     free(T.data);
-    for (i = 3 * l + 1; i < 4 * l - 1; i++)
-      if (field[i])
-        game_over = 1;
+    count_points(field, &points);
+    check_lines(field);
+    clear();
+    f_print(field);
+    stats_print(points, pieces);
+    game_over = is_game_over(field, pieces);
   }
+
+  printf("  \033[0;31mGame Over! \033[0m\n\n");
 
   free(field);
 
