@@ -10,6 +10,7 @@
                     // matrix, with the further declaration of tetramino_t
 #define clear()                                                                \
   printf("\033[1;1H") // printf("\033[1;1H") or printf("\033[1;1H\033[2J")
+#define cursor_set_right_side() printf("\033[1;20H")
 #define cursor_hide() printf("\033[?25l")
 #define cursor_show() printf("\033[?25h")
 #define block_c "■" // ■ or ⬛
@@ -45,30 +46,26 @@ int T6[9] = {6, 6, 6,
 int T7[4] = {7, 7,
              7, 7};         // O
 
-tetramino_t Ts[] = {{T1, 9}, {T2, 16}, {T3, 9}, {T4, 9},
+tetramino_t Ts[7] = {{T1, 9}, {T2, 16}, {T3, 9}, {T4, 9},
                     {T5, 9}, {T6, 9},  {T7, 4}};
 
 char shapes[] = "TISZLJO";
 
-struct termios canon;
+struct termios original;
 
 int msleep(unsigned int tms) { return usleep(tms * 1000); }
 
+void raw_disable() { tcsetattr(STDIN_FILENO, TCSAFLUSH, &original); }
+
 void raw_enable() {
-  struct termios raw;
+  tcgetattr(STDIN_FILENO, &original);
+  atexit(raw_disable);
 
-  tcgetattr(0, &canon);
-  raw = canon;
-  raw.c_lflag &= ~ECHO;
-  raw.c_lflag &= ~ICANON;
-  raw.c_lflag &= ~ISIG;
-  raw.c_cc[VMIN] = 0;
-  raw.c_cc[VTIME] = 0;
+  struct termios raw = original;
+  raw.c_lflag &= ~(ECHO | ICANON);
 
-  tcsetattr(0, TCSANOW, &raw);
+  tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 }
-
-void raw_disable() { tcsetattr(0, TCSANOW, &canon); }
 
 tetramino_t t_create(int *src, int size) {
   tetramino_t t;
@@ -78,21 +75,6 @@ tetramino_t t_create(int *src, int size) {
   for (i = 0; i < t.size; i++)
     t.data[i] = src[i];
   return t;
-}
-
-void stats_print(int points, int* pieces){
-  int i;
-  printf("\n  Punti: %d\n  Tetramini rimasti:\n\n     Numero tetramino:     ", points);
-
-    for (i = 0; i < 7; i++)
-      printf("\033[0;%dm%d\033[0m   ", 31 + i, i + 1);
-    printf("\n     Forma tetramino:      ");
-    for (i = 0; i < 7; i++)
-      printf("\033[1;%dm%c\033[0m   ", 31 + i, shapes[i]);
-    printf("\n     Pezzi rimasti:       ");
-    for (i = 0; i < 7; i++)
-      printf("\033[4;%dm%d\033[0m  ", 31 + i, pieces[i]);
-    printf("\n\n");
 }
 
 void t_rotate(tetramino_t t) {
@@ -108,10 +90,9 @@ void t_print(tetramino_t t) {
   int i, j, e = edge(t);
   for (i = 0; i < e; i++) {
     for (j = 0; j < e; j++)
-      printf("%d ", t.data[j + i * e]);
+      printf("\033[0;%dm%s \033[0m", 30 + t.data[j + i * e], block_c);
     printf("\n");
   }
-  printf("\n");
 }
 
 void t_place(int *field, tetramino_t t, int x, int y) { // statically
@@ -125,57 +106,62 @@ void t_place(int *field, tetramino_t t, int x, int y) { // statically
     }
 }
 
-void f_print(int *field) {
+void f_print(int *field, int param) {
   int i, j, k = 15;
   for (i = 0; i < 4; i++) {
+    if (param) printf("\033[%d;70H", i + 1);
     printf("       ");
-    for (j = 1; j < l - 1; j++)
+    for (j = 1; j < l - 1; j++){
       printf("\033[0;%dm%s \033[0m", 30 + field[j + i * l], block_c);
+    }
     printf("\n");
   }
   for (i = 4; i < h - 1; i++, k--) {
+    if (param) printf("\033[%d;70H", i + 1);
     if (k < 10)
       printf(" ");
     printf("  %d ║ ", k);
     for (j = 1; j < l - 1; j++)
       printf("\033[0;%dm%s \033[0m", 30 + field[j + i * l], block_c);
-    printf("║\n");
+    printf("║");
+    if (!param) printf("\n");
   }
+  if (param) printf("\033[%d;70H", h);
   printf("     ╚");
-  for (i = 0; i < 2 * l - 3; i++)
+  for (i = 0; i < 2 * l - 3; i++){
+    if (param) printf("\033[%d;%dH", h, 76 + i);
     printf("═");
+  }
+  if (param) printf("\033[%d;%dH", h, 70 + 2 * l + 3);
   printf("╝\n      ");
+  if (param) printf("\033[%d;76H", h + 1);
   for (i = 1; i < l - 1; i++)
     printf(" %d", i);
   printf("\n\n");
+  if (!param) printf("           Giocatore 1");
+  else if (param == 1) printf("\033[23;%dHGiocatore 2", 70 + l - 1);
+  else printf("\033[23;%dHCPU", 70 + l - 1);
+  printf("\n\n\n");
 }
 
-tetramino_t t_select(int *field, int* pieces, int points) {
+tetramino_t t_select(int* pieces) {
   int t;
-  printf("  Seleziona un tetramino: ");
+  printf("\033[37;4H\n                       \r    Seleziona un tetramino: ");
   scanf("%d", &t);
-  system("clear");
-  f_print(field);
+  printf("\033[37;4H\n                               \r");
   if (t > 0 && t < 8 && pieces[t - 1]){
     pieces[t - 1]--;
-    stats_print(points, pieces);
     return t_create(Ts[t - 1].data, Ts[t - 1].size);
   }
   while (t < 1 || t > 7 || !pieces[t - 1]){
-    system("clear");
-    f_print(field);
-    stats_print(points, pieces);
-    printf("  Inserisci un numero valido: ");
+    printf("    Inserisci un numero valido: ");
     scanf("%d", &t);
+    printf("\033[37;4H\n                                        \r");
     if (t > 0 && t < 8 && pieces[t - 1]){
       pieces[t - 1]--;
-      system("clear");
-      f_print(field);
-      stats_print(points, pieces);
       return t_create(Ts[t - 1].data, Ts[t - 1].size);
     }
     clear();
-    system("clear");
   }
 }
 
@@ -231,7 +217,7 @@ int t_collision(int *field, tetramino_t t, int x, int y, char dir) {
   }
 }
 
-void t_gravity(int *field, tetramino_t t, int x, int y, int lvl) {
+void t_gravity(int *field, tetramino_t t, int x, int y, int lvl, int param) {
   char dir = 'd';
   int tms;
   int *temp_1 = f_create(h, l);
@@ -262,7 +248,7 @@ void t_gravity(int *field, tetramino_t t, int x, int y, int lvl) {
   while (!t_collision(field, t, x, y, dir)) {
     clear();
     t_place(temp_1, t, x, y++);
-    f_print(temp_1);
+    f_print(temp_1, param);
     printf("\n");
     memcpy(temp_2, temp_1, sizeof(int) * area);
     memcpy(temp_1, field, sizeof(int) * area);
@@ -270,19 +256,18 @@ void t_gravity(int *field, tetramino_t t, int x, int y, int lvl) {
     clear();
   }
   memcpy(field, temp_2, sizeof(int) * area);
-  f_print(field);
+  f_print(field, param);
   cursor_show();
   free(temp_1);
   free(temp_2);
 }
 
-void t_move(int *field, tetramino_t t, int x, int y) {
+void t_move(int *field, tetramino_t t, int x, int y, int param) {
   int i;
   char dir;
   char k;
   int *temp_1 = f_create(h, l);
   int *temp_2 = f_create(h, l);
-  tetramino_t temp = t_create(t.data, t.size);
   memcpy(temp_1, field, sizeof(int) * area);
   memcpy(temp_2, field, sizeof(int) * area);
   cursor_hide();
@@ -291,12 +276,10 @@ void t_move(int *field, tetramino_t t, int x, int y) {
     scanf("%c", &k);
     switch (k) {
     case 'w':
-      t_rotate(temp);
-      if (!t_collision(temp_1, temp, x, y, dir))
-        t_rotate(t);
-      else
+      t_rotate(t);
+      if (t_collision(temp_1, t, x, y, dir))
         for (i = 0; i < 3; i++)
-          t_rotate(temp);
+          t_rotate(t);
       break;
     case 's':
       dir = 'd';
@@ -306,12 +289,11 @@ void t_move(int *field, tetramino_t t, int x, int y) {
       } else {
         clear();
         t_place(field, t, x, y); // or y + 1
-        f_print(field);
+        f_print(field, param);
         raw_disable();
         cursor_show();
         free(temp_1);
         free(temp_2);
-        free(temp.data);
         return;
       }
     case 'd':
@@ -329,32 +311,33 @@ void t_move(int *field, tetramino_t t, int x, int y) {
     }
     clear();
     t_place(temp_1, t, x, y);
-    f_print(temp_1);
+    f_print(temp_1, param);
     printf("\n");
     memcpy(temp_2, temp_1, sizeof(int) * area);
     memcpy(temp_1, field, sizeof(int) * area);
     if (k == 'e')
-      t_gravity(field, t, x, y, 99);
+      t_gravity(field, t, x, y, 99, param);
     clear();
   } while (k != 'e');
   raw_disable();
   clear();
-  f_print(field);
+  f_print(field, param);
   cursor_show();
   free(temp_1);
   free(temp_2);
-  free(temp.data);
 }
 
-int is_game_over(int* field, int* pieces){
+int is_game_over(int* field, int* pieces, int param){
   int i;
   for (i = 3 * l + 1; i < 4 * l - 1; i++)
       if (field[i])
         return 1;
-  for (i = 0; i < sizeof(pieces)/sizeof(int); i++){
+  for (i = 0; i < 7; i++){
       if (pieces[i]) break;
-      if ((i == sizeof(pieces)/sizeof(int) - 1) && !pieces[i])
+      if ((i == 6) && !pieces[i]){
+        if (param) return 2;
         return 1;
+      }
     }
   return 0;
 }
@@ -404,15 +387,47 @@ void count_points(int* field, int *points){
 //  }
 //}
 
+void print_remaining_pieces(int* pieces){
+  int i, j;
+
+  int tetraminos[] = {0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                      0, 0, 1, 0, 0, 2, 0, 0, 3, 3, 0, 4, 4, 0, 0, 5, 5, 5, 0, 6, 6, 6, 0, 7, 7, 0,
+                      0, 1, 1, 1, 0, 2, 0, 3, 3, 0, 0, 0, 4, 4, 0, 5, 0, 0, 0, 0, 0, 6, 0, 7, 7, 0,
+                      0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+  printf("\033[28;4H\n");
+  
+  printf("    Numero del tetramino:");
+  for (i = 0; i < 7; i++){
+    printf("   \033[0;%dm%d   \033[0m", 31 + i, i + 1);
+  }
+  printf("\n\n");
+
+  for (i = 0; i < 4; i++){
+    printf("                        ");
+    for (j = 0; j < 26; j++)
+      printf("\033[0;%dm%s \033[0m", 30 + tetraminos[j + i * 26], block_c);
+    printf("\n");
+  }
+  printf("\n");
+  printf("    Pezzi rimanenti:    ");
+  for (i = 0; i < 7; i++){
+    if (i == 2) printf("\b");
+    if (i == 3) printf(" ");
+    if (i == 5) printf("  ");
+    printf("   \033[0;%dm%d  \033[0m", 31 + i, pieces[i]);
+  }
+  printf("\n");
+}
+
 void check_lines(int* field){
   int i, j, k, q;
-  for (i = h - 2; i > 3; i--){
+  for (i = h - 2; i > 2; i--){
     for (j = 1; j < l - 1; j++){
       if (!field[j + i * l])
         break;
       if ((j == l - 2) && field[j + i * l]){
         for (k = 1; k < l - 1; k++)
-          for (q = i; q > 3; q--)
+          for (q = i; q > 2; q--)
             field[k + (q) * l] = field[k + (q - 1) * l];
           check_lines(field);
       }
@@ -420,37 +435,180 @@ void check_lines(int* field){
   }
 }
 
-int main() {
+void singleplayer(){
   int *field;
   tetramino_t T;
-  int x = 4, y = 0; //	starting position for our tetraminos
+  int x = 4, y = 0; //  starting position for our tetraminos
   int i, j;
   int points = 0, count = 0;
   int game_over = 0;
   int pieces[7] = {20, 20, 20, 20, 20, 20, 20};
+  int param = 0;
   
   system("clear");
 
   field = f_create(h, l);
   f_clear(field);
-  f_print(field);
-  stats_print(points, pieces);
+  f_print(field, param);
+  printf("\033[24;13HPunti: %d", points);
 
   while (!game_over) {
-    T = t_select(field, pieces, points);
-    t_move(field, T, x, y);
+    clear();
+    cursor_hide();
+    print_remaining_pieces(pieces);
+    cursor_show();
+    T = t_select(pieces);
+    cursor_hide();
+    print_remaining_pieces(pieces);
+    t_move(field, T, x, y, param);
     free(T.data);
     count_points(field, &points);
+    printf("\033[24;13HPunti: %d", points);
     check_lines(field);
     clear();
-    f_print(field);
-    stats_print(points, pieces);
-    game_over = is_game_over(field, pieces);
+    f_print(field, param);
+    game_over = is_game_over(field, pieces, param);
   }
 
-  printf("  \033[0;31mGame Over! \033[0m\n\n");
-
+  printf("\033[25;35H\033[0;31mGame Over!\033[0m\n");
   free(field);
+}
 
-  return 0;
+void multiplayer(){
+  int *field1, *field2;
+  tetramino_t T;
+  int x = 4, y = 0; //  starting position for our tetraminos
+  int i, j;
+  int points1 = 0, points2 = 0, count = 0;
+  int game_over = 0;
+  int pieces[7] = {40, 40, 40, 40, 40, 40, 40};
+  int param = 1;
+  
+  system("clear");
+
+  field1 = f_create(h, l);
+  field2 = f_create(h, l);
+  f_clear(field1);
+  f_clear(field2);
+  f_print(field1, 0);
+  f_print(field2, 1);
+  printf("\033[24;13HPunti: %d", points1);
+  printf("\033[24;82HPunti: %d", points2);
+
+  while (1) {
+    clear();
+    cursor_hide();
+    printf("\033[25;40HTocca al giocatore 1!");
+    print_remaining_pieces(pieces);
+    cursor_show();
+    T = t_select(pieces);
+    cursor_hide();
+    print_remaining_pieces(pieces);
+    t_move(field1, T, x, y, 0);
+    free(T.data);
+    count_points(field1, &points1);
+    printf("\033[24;13HPunti: %d", points1);
+    check_lines(field1);
+    clear();
+    f_print(field1, 0);
+    game_over = is_game_over(field1, pieces, param);
+      if (game_over){
+        printf("\033[25;35H\033[0;31mGame Over! Vince il giocatore 2!\033[0m\n");
+        break;
+      }
+    printf("\033[25;40HTocca al giocatore 2!\n\n\n");
+    cursor_show();
+    T = t_select(pieces);
+    print_remaining_pieces(pieces);
+    cursor_hide();
+    t_move(field2, T, x, y, 1);
+    free(T.data);
+    count_points(field2, &points2);
+    printf("\033[24;82HPunti: %d", points2);
+    check_lines(field2);
+    clear();
+    f_print(field2, 1);
+    print_remaining_pieces(pieces);
+    game_over = is_game_over(field2, pieces, param);
+    if (game_over == 1){
+      printf("\033[25;35H\033[0;31mGame Over! Vince il giocatore 1!\033[0m\n");
+      break;
+    }
+    else if (game_over == 2){
+      printf("\033[25;35H\033[0;31mGame Over! Sono terminati i tetramini!\033[0m\n");
+      break;
+    }
+  }
+
+  cursor_show();
+  free(field1);
+  free(field2);
+}
+
+void cpu(){
+  system("clear");
+  printf("\n\n\n\n\n\n\n\n                            Coming soon :)");
+}
+
+int main() {
+
+  int gamemode, replay;
+
+  system("clear");
+
+  printf("\n\n     .----------------.  .----------------.  .----------------.  .----------------.  .----------------.  .----------------.  .----------------.\n");
+  printf("    | .--------------. || .--------------. || .--------------. || .--------------. || .--------------. || .--------------. || .--------------. |\n");
+  printf("    | |  ____  ____  | || |  _________   | || |  _________   | || |  _________   | || |  _______     | || |     _____    | || |    _______   | |\n");
+  printf("    | | |_  _||_  _| | || | |  _   _  |  | || | |_   ___  |  | || | |  _   _  |  | || | |_   __ \\    | || |    |_   _|   | || |   /  ___  |  | |\n");
+  printf("    | |   \\ \\  / /   | || | |_/ | | \\_|  | || |   | |_  \\_|  | || | |_/ | | \\_|  | || |   | |__) |   | || |      | |     | || |  |  (__ \\_|  | |\n");
+  printf("    | |    > `' <    | || |     | |      | || |   |  _|  _   | || |     | |      | || |   |  __ /    | || |      | |     | || |   '.___`-.   | |\n");
+  printf("    | |  _/ /'`\\ \\_  | || |    _| |_     | || |  _| |___/ |  | || |    _| |_     | || |  _| |  \\ \\_  | || |     _| |_    | || |  |`\\____) |  | |\n");
+  printf("    | | |____||____| | || |   |_____|    | || | |_________|  | || |   |_____|    | || | |____| |___| | || |    |_____|   | || |  |_______.'  | |\n");
+  printf("    | |              | || |              | || |              | || |              | || |              | || |              | || |              | |\n");
+  printf("    | '--------------' || '--------------' || '--------------' || '--------------' || '--------------' || '--------------' || '--------------' |\n");
+  printf("    '----------------'  '----------------'  '----------------'  '----------------'  '----------------'  '----------------'  '----------------' \n\n\n");
+
+  sleep(1);
+  
+  printf("            [0] Giocatore singolo\n            [1] Multigiocatore\n            [2] Player vs CPU\n            [3] Tutorial\n            [9] Esci\n\n");
+  printf("            Seleziona la modalità: ");
+  
+  while (gamemode != 0 && gamemode != 1 && gamemode != 2){
+    scanf("%d", &gamemode);
+    switch(gamemode){
+      case 0:
+        singleplayer();
+        break;
+      case 1:
+        multiplayer();
+        break;
+      case 2:
+        cpu();
+        break;
+      case 3:
+        printf("\n            Seleziona un tetramino con i numeri 1 - 7. Usa [W] per ruotare il tetramino, [A] per spostarlo a sinistra,\n            [S] per spostarlo verso il basso, [D] per spostarlo verso destra e [E] per confermare il la posizione del pezzo.\033[22;36H");
+        break;
+      case 9:
+        return 0;
+      default:
+        printf("\033[21;13HInserisci un numero valido: ");
+        break;
+    }
+  }
+  
+  sleep(2);
+  printf("\033[38;4H\n    Vuoi rigiocare?\n    [1] Sì\n    [0] No\n\033[43;4H");
+  while (replay != 0 && replay != 1){
+    scanf("%d", &replay);
+    switch(replay){
+    case 0:
+      return 0;
+    case 1:
+      main();
+      break;
+    default:
+      printf("\033[43;8HInserisci un numero valido: ");
+      break;
+    }
+  }
 }
