@@ -4,6 +4,7 @@
 #include <string.h>
 #include <termios.h>
 #include <unistd.h>
+#include <sys/time.h>
 
 #define edge(t) (int)sqrt(t.size) /* General way to get the size of the edge of a square
                                    * matrix, with the further declaration of tetramino_t */
@@ -12,6 +13,24 @@
 #define cursor_hide() printf("\033[?25l")
 #define cursor_show() printf("\033[?25h")
 #define block_c "■"
+
+long current()
+{
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  return 1000000 * tv.tv_sec + tv.tv_usec;
+}
+
+long lvl_to_ms(int lvl) {
+  switch (lvl) {
+  case 1: return 600000;
+  case 2: return 500000;
+  case 3: return 400000;
+  case 4: return 300000;
+  case 5: return 200000;
+	default: return 100000;
+  }
+}
 
 const int h = 20, l = 12, distance = 70, area = h * l; /**  
                                                         *  The actual number of rows of our field is h - 4 - 1 (default 20, so 15);
@@ -53,8 +72,8 @@ void raw_enable() {
   raw.c_lflag &= ~ICANON;
   raw.c_lflag &= ~ECHO;
   raw.c_lflag &= ~ISIG;
-  raw.c_cc[VMIN] = 1;
-  raw.c_cc[VTIME] = 5;
+  raw.c_cc[VMIN] = 0;
+  raw.c_cc[VTIME] = 0;
   tcsetattr(0, TCSANOW, &raw);
 }
 
@@ -144,25 +163,38 @@ void f_print(int *field, int mp) {
     printf("\033[%d;%dHCPU", h + 3, distance + l - 1);
 }
 
-tetramino_t t_select(int *pieces) {
-  int t;
-  printf("\033[%d;4H                       \r    Seleziona un tetramino: ", h + 18);
-  scanf("%d", &t);
-  printf("\033[%d;4H                               \r", h + 18);
-  if (t > 0 && t < 8 && pieces[t - 1]) {
+tetramino_t t_select(int *pieces, int random) {
+  int t, valid;
+  if (random){
+    t = 1 + (rand() % 7);
+    if (!pieces[t - 1]){
+      valid = 0;
+      while (!valid){
+        t = 1 + (rand() % 7);
+        valid = (pieces[t - 1] != 0);
+      }
+    }
     pieces[t - 1]--;
     return t_create(Ts[t - 1].data, Ts[t - 1].size);
   }
-  while (t < 1 || t > 7 || !pieces[t - 1]) {
-    printf(
-        "\033[%d;4H                       \r    Inserisci un numero valido: ", h + 18);
+  else{
+    printf("\033[%d;4H                       \r    Seleziona un tetramino: ", h + 18);
     scanf("%d", &t);
-    printf("\033[%d;4H                                        \r", h + 18);
+    printf("\033[%d;4H                               \r", h + 18);
     if (t > 0 && t < 8 && pieces[t - 1]) {
       pieces[t - 1]--;
       return t_create(Ts[t - 1].data, Ts[t - 1].size);
     }
-    clear();
+    while (t < 1 || t > 7 || !pieces[t - 1]) {
+      printf("\033[%d;4H                       \r    Inserisci un numero valido: ", h + 18);
+      scanf("%d", &t);
+      printf("\033[%d;4H                                        \r", h + 18);
+      if (t > 0 && t < 8 && pieces[t - 1]) {
+        pieces[t - 1]--;
+        return t_create(Ts[t - 1].data, Ts[t - 1].size);
+      }
+      clear();
+    }
   }
 }
 
@@ -220,32 +252,11 @@ int t_collision(int *field, tetramino_t t, int x, int y, char dir) {
 
 void t_gravity(int *field, tetramino_t t, int x, int y, int lvl, int mp) {
   char dir = 'd';
-  int tms;
   int *temp_1 = f_create(h, l);
   int *temp_2 = f_create(h, l);
   memcpy(temp_1, field, sizeof(int) * area);
   memcpy(temp_2, field, sizeof(int) * area);
   cursor_hide();
-  switch (lvl) {
-  case 1:
-    tms = 1000;
-    break;
-  case 2:
-    tms = 700;
-    break;
-  case 3:
-    tms = 500;
-    break;
-  case 4:
-    tms = 400;
-    break;
-  case 5:
-    tms = 300;
-    break;
-  case 99:
-    tms = 10;
-    break;
-  }
   while (!t_collision(field, t, x, y, dir)) {
     clear();
     t_place(temp_1, t, x, y++);
@@ -253,7 +264,6 @@ void t_gravity(int *field, tetramino_t t, int x, int y, int lvl, int mp) {
     printf("\n");
     memcpy(temp_2, temp_1, sizeof(int) * area);
     memcpy(temp_1, field, sizeof(int) * area);
-    msleep(tms);
     clear();
   }
   memcpy(field, temp_2, sizeof(int) * area);
@@ -268,6 +278,8 @@ char select_char(){
   return read(STDIN_FILENO, &buff, 1) > 0 ? buff : 0;
 }
 
+long last_drop;
+
 void t_move(int *field, tetramino_t t, int x, int y, int mp) {
   int i;
   char dir;
@@ -275,7 +287,6 @@ void t_move(int *field, tetramino_t t, int x, int y, int mp) {
   int *temp_1 = f_create(h, l);
   int *temp_2 = f_create(h, l);
   memcpy(temp_1, field, sizeof(int) * area);
-/*memcpy(temp_2, field, sizeof(int) * area);*/
   clear();
   t_place(temp_1, t, x, y);
   f_print(temp_1, mp);
@@ -285,7 +296,7 @@ void t_move(int *field, tetramino_t t, int x, int y, int mp) {
   raw_enable();
   while (1){
     k = select_char();
-    if (k != 0){
+    if (1){
       switch (k) {
         case 'w':
           t_rotate(t);
@@ -295,19 +306,9 @@ void t_move(int *field, tetramino_t t, int x, int y, int mp) {
           break;
         case 's':
           dir = 'd';
-          if (!t_collision(temp_1, t, x, y + 1, dir)) {   /* Or y + 2, if we want our block to be automatically placed once it hits the ground */
+          if (!t_collision(temp_1, t, x, y + 1, dir))
             y++;
-            break;
-          } else {
-            clear();
-            t_place(field, t, x, y);  /* Or y + 1, for the reason stated above */
-            f_print(field, mp);
-            raw_disable();
-            cursor_show();
-            free(temp_1);
-            free(temp_2);
-            return;
-          }
+          break;
         case 'd':
           dir = 'r';
           if (!t_collision(temp_1, t, x + 1, y, dir))
@@ -318,26 +319,49 @@ void t_move(int *field, tetramino_t t, int x, int y, int mp) {
           if (!t_collision(temp_1, t, x - 1, y, dir))
             x--;
           break;
-        default:
-          break;
+				case ' ':
+					while (1) {
+						if (!t_collision(temp_1, t, x, y + 1, dir)) {   /* Or y + 2, if we want our block to be automatically placed once it hits the ground */
+              y++;
+						} else {
+							clear();
+							t_place(field, t, x, y);  /* Or y + 1, for the reason stated above */
+							f_print(field, mp);
+							raw_disable();
+							cursor_show();
+							free(temp_1);
+							free(temp_2);
+							return;
+						}
+					}
+					break;
+				default:
+          dir = 'd';
+					int tbd = lvl_to_ms(1);
+					if (current() - last_drop > tbd) {
+						last_drop = current();
+						if (!t_collision(temp_1, t, x, y + 1, dir)) {   /* Or y + 2, if we want our block to be automatically placed once it hits the ground */
+							y++;
+							break;
+						} else {
+							clear();
+							t_place(field, t, x, y);  /* Or y + 1, for the reason stated above */
+							f_print(field, mp);
+							raw_disable();
+							cursor_show();
+							free(temp_1);
+							free(temp_2);
+							return;
+						}
+					}
+					break;
         }
         clear();
         t_place(temp_1, t, x, y);
         f_print(temp_1, mp);
         memcpy(temp_2, temp_1, sizeof(int) * area);
         memcpy(temp_1, field, sizeof(int) * area);
-        if (k == 'e'){
-          t_gravity(field, t, x, y, 99, mp);
-          break;
-        }
       }
-      //else{
-      //  clear();
-      //  t_place(temp_1, t, x, ++y);
-      //  f_print(temp_1, mp);
-      //  memcpy(temp_2, temp_1, sizeof(int) * area);
-      //  memcpy(temp_1, field, sizeof(int) * area);
-      //}
     }
     raw_disable();
   clear();
@@ -355,7 +379,7 @@ int is_game_over(int *field, int *pieces, int mp) {
   for (i = 0; i < 7; i++) {
     if (pieces[i])
       break;
-    if ((i == 6)) {
+    if (i == 6) {
       if (mp)
         return 2;
       return 1;
@@ -382,14 +406,6 @@ void count_points(int *field, int *points, int *count) {
     break;
   case 2:
     *points += 3;
-//    printf("\033[%d;1H", h + 5);
-//    for (i = 0; i < 100; i++)
-//      printf(" ");
-//    printf("\033[%d;%dH\033[0;31mDouble!\033[0m", h + 6, distance / 2);
-//    sleep(1);
-//    printf("\033[%d;1H", h + 6);
-//    for (i = 0; i < 100; i++)
-//      printf(" ");
     break;
   case 3:
     *points += 6;
@@ -403,21 +419,19 @@ void count_points(int *field, int *points, int *count) {
   }
 }
 
-/* void reverse_lines(int* field){
- *  int i, j, row_is_1 = 1;
- *  int* reversed = malloc(sizeof(int) * l - 2);
- *  for (i = h - 2; i > 3; i--){
- *    k = 0;
- *    for (j = 1; j < l - 1; j++){
- *      row_is_1 = field[j + i * l] != 0;
- *      if (!row_is_1)
- *        break;
- *      if (field[j + i * l])
- *        reversed[k++] = 7;
- *    }
- *  }
- *}
- */
+void reverse_lines(int* field, int *count){
+  int i, j;
+  if (*count < 3) return;
+  for (i = h - 2; i > h - 2 - *count; i--){
+    for (j = 1; j < l - 1; j++){
+      if (field[j + i * l] == 0)
+        field[j + i * l] = 7;
+      else
+        field[j + i * l] = 0;
+    }
+  }
+}
+
 
 void print_remaining_pieces(int *pieces) {
   int i, j;
@@ -463,7 +477,7 @@ void f_lower(int *field) {
   }
 }
 
-void singleplayer() {
+void singleplayer(int random) {
   int *field;
   tetramino_t T;
   int x = 4, y = 0;   /*  Starting position for our tetraminos  */
@@ -484,7 +498,7 @@ void singleplayer() {
     cursor_hide();
     print_remaining_pieces(pieces);
     cursor_show();
-    T = t_select(pieces);
+    T = t_select(pieces, random);
     cursor_hide();
     print_remaining_pieces(pieces);
     t_move(field, T, x, y, mp);
@@ -502,7 +516,7 @@ void singleplayer() {
   free(field);
 }
 
-void multiplayer() {
+void multiplayer(int random) {
   int *field1, *field2;
   tetramino_t T;
   int x = 4, y = 0;   /*  Starting position for our tetraminos  */
@@ -528,12 +542,13 @@ void multiplayer() {
     printf("\033[%d;%dHTocca al giocatore 1!", h + 5, distance / 2 + 5);
     print_remaining_pieces(pieces);
     cursor_show();
-    T = t_select(pieces);
+    T = t_select(pieces, random);
     cursor_hide();
     print_remaining_pieces(pieces);
     t_move(field1, T, x, y, 0);
     free(T.data);
     count_points(field1, &points1, &count);
+    reverse_lines(field2, &count);
     printf("\033[%d;%dHPunti: %d", h + 4, l + 1, points1);
     f_lower(field1);
     clear();
@@ -546,12 +561,13 @@ void multiplayer() {
     }
     printf("\033[%d;%dHTocca al giocatore 2!\n\n\n", h + 5, distance / 2 + 5);
     cursor_show();
-    T = t_select(pieces);
+    T = t_select(pieces, random);
     print_remaining_pieces(pieces);
     cursor_hide();
     t_move(field2, T, x, y, 1);
     free(T.data);
     count_points(field2, &points2, &count);
+    reverse_lines(field1, &count);
     printf("\033[%d;%dHPunti: %d", h + 4, distance + l, points2);
     f_lower(field2);
     clear();
@@ -589,76 +605,62 @@ void cpu() {
 
 int main() {
 
-  int gamemode, replay;
+	last_drop = current();
+  int gamemode, replay, random = 1;
 
   system("clear");
 
-  printf("\n\n     .----------------.  .----------------.  .----------------.  "
-         ".----------------.  .----------------.  .----------------.  "
-         ".----------------.\n");
-  printf("    | .--------------. || .--------------. || .--------------. || "
-         ".--------------. || .--------------. || .--------------. || "
-         ".--------------. |\n");
-  printf("    | |  ____  ____  | || |  _________   | || |  _________   | || |  "
-         "_________   | || |  _______     | || |     _____    | || |    "
-         "_______   | |\n");
-  printf("    | | |_  _||_  _| | || | |  _   _  |  | || | |_   ___  |  | || | "
-         "|  _   _  |  | || | |_   __ \\    | || |    |_   _|   | || |   /  "
-         "___  |  | |\n");
-  printf("    | |   \\ \\  / /   | || | |_/ | | \\_|  | || |   | |_  \\_|  | "
-         "|| | |_/ | | \\_|  | || |   | |__) |   | || |      | |     | || |  | "
-         " (__ \\_|  | |\n");
-  printf("    | |    > `' <    | || |     | |      | || |   |  _|  _   | || |  "
-         "   | |      | || |   |  __ /    | || |      | |     | || |   "
-         "'.___`-.   | |\n");
-  printf("    | |  _/ /'`\\ \\_  | || |    _| |_     | || |  _| |___/ |  | || "
-         "|    _| |_     | || |  _| |  \\ \\_  | || |     _| |_    | || |  "
-         "|`\\____) |  | |\n");
-  printf("    | | |____||____| | || |   |_____|    | || | |_________|  | || |  "
-         " |_____|    | || | |____| |___| | || |    |_____|   | || |  "
-         "|_______.'  | |\n");
-  printf("    | |              | || |              | || |              | || |  "
-         "            | || |              | || |              | || |           "
-         "   | |\n");
-  printf("    | '--------------' || '--------------' || '--------------' || "
-         "'--------------' || '--------------' || '--------------' || "
-         "'--------------' |\n");
-  printf("    '----------------'  '----------------'  '----------------'  "
-         "'----------------'  '----------------'  '----------------'  "
-         "'----------------' \n\n\n");
+  printf("\n\n               _  ________     __       _     \n              | |/ /_  __/__  / /______(_)____\n"
+         "              |   / / / / _ \\/ __/ ___/ / ___/\n             /   | / / /  __/ /_/ /  / (__  ) \n"
+         "            /_/|_|/_/  \\___/\\__/_/  /_/____/  \n                                              \n");
 
   sleep(1);
 
-  printf("            [0] Giocatore singolo\n            [1] Multigiocatore\n  "
-         "          [2] Player vs CPU\n            [3] Tutorial\n            "
-         "[9] Esci\n\n");
-  printf("            Seleziona la modalità: ");
+  printf("\033[9;12H[0] Giocatore singolo\033[10;12H[1] Multigiocatore"
+         "\033[11;12H[2] Player vs CPU\033[12;12H[3] Tutorial"
+         "\033[13;12H[4] Impostazioni\033[14;12H[9] Esci"
+         "\033[16;12HSeleziona la modalità: ");
 
   while (gamemode != 0 && gamemode != 1 && gamemode != 2) {
     scanf("%d", &gamemode);
     switch (gamemode) {
     case 0:
-      singleplayer();
+      singleplayer(random);
       break;
     case 1:
-      multiplayer();
+      multiplayer(random);
       break;
     case 2:
       cpu();
       break;
     case 3:
       printf(
-          "\n            Seleziona un tetramino con i numeri 1 - 7. Usa [W] "
-          "per ruotare il tetramino, [A] per spostarlo a sinistra,\n           "
-          " [S] per spostarlo verso il basso, [D] per spostarlo a destra e "
-          "[E] per confermare il la posizione del pezzo.\033[22;36H");
-      printf("\033[22;13H                              \r            Seleziona la modalità: ");
+          "\033[18;12H                                                                                                  \033[18;12HUsa [W] per ruotare il tetramino, [A] per spostarlo a sinistra, [S] per spostarlo verso il basso, "
+          "\033[19;12H                                                                                                  \033[19;12H[D] per spostarlo a destra e [Barra Spaziatrice] per confermare il la posizione del pezzo."
+          "\033[20;12H                                                                                                  \033[20;12HNella modalità di inserimento pezzi manuale, dovrai selezionare un tetramino con i numeri 1 - 7. \033[23;36H");
+      printf("\033[16;12H                                  \033[16;12HSeleziona la modalità: ");
+      break;
+    case 4:
+      printf("\033[18;12H                                                                                                  \033[18;12HSeleziona la modalità di inserimento dei tetramini. Default: [1]"
+             "\033[19;12H                                                                                                  \033[19;12H[0] Manuale"
+             "\033[20;12H                                                                                                  \033[20;12H[1] Random"
+             "\033[22;12HSeleziona la modalità di inserimento: ");
+      scanf("%d", &random);
+      while(random != 0 && random != 1){
+        printf("\033[22;12H                                          \033[22;12HInserisci un numero valido: ");
+        scanf("%d", &random);
+      }
+      printf("\033[18;12H                                                                                                  "
+             "\033[19;12H                                                                                                  "
+             "\033[20;12H                                                                                                  "
+             "\033[22;12H                                          "
+             "\033[16;12H                                  \033[16;12HSeleziona la modalità: ");
       break;
     case 9:
       printf("\033[27;1H");
       return 0;
     default:
-      printf("\033[22;13HInserisci un numero valido: ");
+      printf("\033[17;12H                                  \033[17;12HInserisci un numero valido: ");
       break;
     }
   }
