@@ -21,15 +21,13 @@ long current()
   return 1000000 * tv.tv_sec + tv.tv_usec;
 }
 
-long lvl_to_ms(int lvl) {
-  switch (lvl) {
-  case 1: return 600000;
-  case 2: return 500000;
-  case 3: return 400000;
-  case 4: return 300000;
-  case 5: return 200000;
-	default: return 100000;
-  }
+long lvl_to_ms(int *points) {
+  if (*points >= 0 && *points < 8) return 600000;
+  if (*points >= 8 && *points < 16) return 500000;
+  if (*points >= 16 && *points < 24) return 400000;
+  if (*points >= 24 && *points < 32) return 300000;
+  if (*points >= 32 && *points < 40) return 200000;
+  if (*points >= 40) return 100000;
 }
 
 const int h = 20, l = 12, distance = 70, area = h * l; /**  
@@ -280,12 +278,13 @@ char select_char(){
 
 long last_drop;
 
-void t_move(int *field, tetramino_t t, int x, int y, int mp) {
+void t_move(int *field, tetramino_t t, int x, int y, int mp, int *points) {
   int i;
   char dir;
   char k;
   int *temp_1 = f_create(h, l);
   int *temp_2 = f_create(h, l);
+  int tbd;
   memcpy(temp_1, field, sizeof(int) * area);
   clear();
   t_place(temp_1, t, x, y);
@@ -336,8 +335,8 @@ void t_move(int *field, tetramino_t t, int x, int y, int mp) {
 					}
 					break;
 				default:
+          tbd = lvl_to_ms(points);
           dir = 'd';
-					int tbd = lvl_to_ms(1);
 					if (current() - last_drop > tbd) {
 						last_drop = current();
 						if (!t_collision(temp_1, t, x, y + 1, dir)) {   /* Or y + 2, if we want our block to be automatically placed once it hits the ground */
@@ -501,7 +500,7 @@ void singleplayer(int random) {
     T = t_select(pieces, random);
     cursor_hide();
     print_remaining_pieces(pieces);
-    t_move(field, T, x, y, mp);
+    t_move(field, T, x, y, mp, &points);
     free(T.data);
     count_points(field, &points, &count);
     printf("\033[%d;%dHPunti: %d", h + 4, l + 1, points);
@@ -545,7 +544,7 @@ void multiplayer(int random) {
     T = t_select(pieces, random);
     cursor_hide();
     print_remaining_pieces(pieces);
-    t_move(field1, T, x, y, 0);
+    t_move(field1, T, x, y, 0, &points1);
     free(T.data);
     count_points(field1, &points1, &count);
     reverse_lines(field2, &count);
@@ -564,7 +563,7 @@ void multiplayer(int random) {
     T = t_select(pieces, random);
     print_remaining_pieces(pieces);
     cursor_hide();
-    t_move(field2, T, x, y, 1);
+    t_move(field2, T, x, y, 1, &points2);
     free(T.data);
     count_points(field2, &points2, &count);
     reverse_lines(field1, &count);
@@ -604,9 +603,9 @@ void cpu() {
 }
 
 int main() {
-
-	last_drop = current();
   int gamemode, replay, random = 1;
+
+  last_drop = current();
 
   system("clear");
 
@@ -634,33 +633,41 @@ int main() {
       cpu();
       break;
     case 3:
-      printf(
-          "\033[18;12H                                                                                                  \033[18;12HUsa [W] per ruotare il tetramino, [A] per spostarlo a sinistra, [S] per spostarlo verso il basso, "
-          "\033[19;12H                                                                                                  \033[19;12H[D] per spostarlo a destra e [Barra Spaziatrice] per confermare il la posizione del pezzo."
-          "\033[20;12H                                                                                                  \033[20;12HNella modalità di inserimento pezzi manuale, dovrai selezionare un tetramino con i numeri 1 - 7. \033[23;36H");
+      printf("\033[18;12H                                                                                                                \033[18;12HUsa [W] per ruotare il tetramino, [A] per spostarlo a sinistra, [S] per spostarlo verso il basso, ");
+      printf("\033[19;12H                                                                                                                \033[19;12H[D] per spostarlo a destra e [Barra Spaziatrice] per confermare il la posizione del pezzo.");
+      printf("\033[20;12H                                                                                                                \033[20;12HNella modalità di inserimento pezzi manuale, dovrai selezionare un tetramino con i numeri 1 - 7.");
+      printf("\033[21;12H                                                                                                                \033[21;12HL'eliminazione di una riga vale 1 punto, di due righe 3 punti, di tre righe 6 punti e di quattro righe 12 punti.");
+      printf("\033[22;12H                                                                                                                \033[22;12HOgni 8 punti la velocità di discesa dei tetramini aumenta progressivamente fino a 40 punti!");
       printf("\033[16;12H                                  \033[16;12HSeleziona la modalità: ");
       break;
     case 4:
-      printf("\033[18;12H                                                                                                  \033[18;12HSeleziona la modalità di inserimento dei tetramini. Default: [1]"
-             "\033[19;12H                                                                                                  \033[19;12H[0] Manuale"
-             "\033[20;12H                                                                                                  \033[20;12H[1] Random"
-             "\033[22;12HSeleziona la modalità di inserimento: ");
+      printf("\033[18;12H                                                                                                                \033[18;12HSeleziona la modalità di inserimento dei tetramini. Default: [1]");
+      printf("\033[19;12H                                                                                                                \033[19;12H[0] Manuale");
+      printf("\033[20;12H                                                                                                                \033[20;12H[1] Random");
+      printf("\033[21;12H                                                                                                                ");
+      printf("\033[22;12H                                                                                                                \033[22;12HSeleziona la modalità di inserimento: ");
       scanf("%d", &random);
       while(random != 0 && random != 1){
         printf("\033[22;12H                                          \033[22;12HInserisci un numero valido: ");
         scanf("%d", &random);
       }
-      printf("\033[18;12H                                                                                                  "
-             "\033[19;12H                                                                                                  "
-             "\033[20;12H                                                                                                  "
-             "\033[22;12H                                          "
-             "\033[16;12H                                  \033[16;12HSeleziona la modalità: ");
+      printf("\033[18;12H                                                                                                                ");
+      printf("\033[19;12H                                                                                                                ");
+      printf("\033[20;12H                                                                                                                ");
+      printf("\033[21;12H                                                                                                                ");
+      printf("\033[22;12H                                          ");
+      printf("\033[16;12H                                         \033[16;12HSeleziona la modalità: ");
       break;
     case 9:
       printf("\033[27;1H");
       return 0;
     default:
-      printf("\033[17;12H                                  \033[17;12HInserisci un numero valido: ");
+      printf("\033[18;12H                                                                                                                ");
+      printf("\033[19;12H                                                                                                                ");
+      printf("\033[20;12H                                                                                                                ");
+      printf("\033[21;12H                                                                                                                ");
+      printf("\033[22;12H                                                                                                                ");
+      printf("\033[16;12H                                         \033[16;12HInserisci un numero valido: ");
       break;
     }
   }
