@@ -21,7 +21,7 @@ long current()
   return 1000000 * tv.tv_sec + tv.tv_usec;
 }
 
-long lvl_to_ms(int *points) {
+long points_to_ms(int *points) {
   if (*points >= 0 && *points < 8) return 600000;
   if (*points >= 8 && *points < 16) return 500000;
   if (*points >= 16 && *points < 24) return 400000;
@@ -335,7 +335,7 @@ void t_move(int *field, tetramino_t t, int x, int y, int mp, int *points) {
 					}
 					break;
 				default:
-          tbd = lvl_to_ms(points);
+          tbd = points_to_ms(points);
           dir = 'd';
 					if (current() - last_drop > tbd) {
 						last_drop = current();
@@ -603,7 +603,7 @@ void cpu() {
 }
 
 int main() {
-  int gamemode, replay, random = 1;
+  int gamemode = 10, replay = 10, random = 1;
 
   last_drop = current();
 
