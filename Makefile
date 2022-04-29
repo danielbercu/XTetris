@@ -10,12 +10,12 @@ DOCS_DIR := docs
 EXE := $(EXE_DIR)/xtetris
 
 xtetris: main.o game.o field.o tetramino.o utilities.o cpu.o
-	mkdir $(EXE_DIR)
+	mkdir -p $(EXE_DIR)
 	$(CC) $(OBJ_DIR)/main.o $(OBJ_DIR)/game.o $(OBJ_DIR)/field.o $(OBJ_DIR)/tetramino.o $(OBJ_DIR)/utilities.o $(OBJ_DIR)/cpu.o -lm $(CFLAGS) -o $(EXE)
 	doxygen
 
 main.o:
-	mkdir $(OBJ_DIR)
+	mkdir -p $(OBJ_DIR)
 	$(CC) -c $(SRC_DIR)/main.c $(INCLUDE) $(CFLAGS) -o $(OBJ_DIR)/main.o
 
 game.o:
