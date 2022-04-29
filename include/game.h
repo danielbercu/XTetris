@@ -29,12 +29,10 @@ void multiplayer(settings_t *s);
 void cpu(settings_t *s);
 
 /**
- * A function that analyses two aspects of the current
- * game: it checks if there are any pieces left for
- * the players to use or if a player placed a piece
- * over the 15th row.
- * When none of these conditions are true it returns 0,
- * otherwise it returns 1 or 2 if the game is singleplayer
+ * Checks if there are any pieces left for the players
+ * to use or if a player placed a piece over the 15th row.
+ * When none of these conditions are true returns 0,
+ * otherwise returns 1 or 2 if the game is singleplayer
  * or multplayer.
  */
 
@@ -61,7 +59,7 @@ void count_points(int *field, int *points, int *count, int h, int l);
 void reverse_lines(int *field, int *count, int h, int l);
 
 /**
- * This one also does what is says. Displayes under the
+ * It does what is says. Displays under the
  * field(s) a list of the available pieces left.
  */
 

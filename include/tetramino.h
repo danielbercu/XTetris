@@ -17,7 +17,7 @@ tetramino_t t_create(int *src, int size);
 void t_rotate(tetramino_t t);
 
 /**
- * Print the content of a tetramino_t through a square
+ * Prints the content of a tetramino_t through a square
  * matrix. Never used it in the code, but it's nice to
  * have. You never know!
  */
@@ -25,21 +25,16 @@ void t_rotate(tetramino_t t);
 void t_print(tetramino_t t);
 
 /**
- * Places a tetramino in a field at coordinates (x,y);
- * this one's a static placing method: for more complex
- * placing approaches, like the drop over time and the
- * falling animation, see the functions below (which make
- * use of this function right here).
- * Note that the game interpets the coordinates (x,y) == (0,0)
- * as the top-left corner.
+ * Places a tetramino in a field at coordinates (x,y).
+ * Note that the game interpets the coordinates
+ * (x,y) == (0,0) as the top-left corner.
  */
 
 void t_place(int *field, tetramino_t t, int x, int y, int l);
 
 /**
- * Another rather complex function, which goal is to return a
- * tetramino_t depending from the type of selection (random
- * or manual) and the availability of pieces.
+ * Returns a tetramino_t depending from the type of selection
+ * (random or manual) and the availability of pieces.
  * We do not care if there are no available pieces BEFORE
  * calling this function: when this happens we will have already
  * made a check and exited the main loop of the gamemode,
@@ -54,7 +49,7 @@ tetramino_t t_select(int *pieces, settings_t *s);
  * placed in the field in order to check its collisions:
  * using its edge (the square root of its size) and some given
  * coordinates (x,y), we can estimate if there is a non-zero
- * element under or near the slots where it would be placed.
+ * element under or near the places where it would be placed.
  */
 
 int t_collision(int *field, tetramino_t t, int x, int y, char dir, int l);

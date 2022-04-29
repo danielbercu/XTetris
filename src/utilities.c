@@ -51,19 +51,19 @@ long current() {
   return 1000000 * tv.tv_sec + tv.tv_usec;
 }
 
-long points_to_ms(int *points) {
+long points_to_ms(int points) {
   long res;
-  if (*points >= 0 && *points < 8)
+  if (points >= 0 && points < 8)
     res = 600000;
-  if (*points >= 8 && *points < 16)
+  if (points >= 8 && points < 16)
     res = 500000;
-  if (*points >= 16 && *points < 24)
+  if (points >= 16 && points < 24)
     res = 400000;
-  if (*points >= 24 && *points < 32)
+  if (points >= 24 && points < 32)
     res = 300000;
-  if (*points >= 32 && *points < 40)
+  if (points >= 32 && points < 40)
     res = 200000;
-  if (*points >= 40)
+  if (points >= 40)
     res = 100000;
   return res;
 }

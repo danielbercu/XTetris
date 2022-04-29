@@ -204,7 +204,7 @@ void t_move(int *field, tetramino_t t, int x, int y, int mp, int *points, settin
         }
         break;
       default:
-        tbd = points_to_ms(points);
+        tbd = points_to_ms(*points);
         dir = 'd';
         if (current() - s->last_drop > tbd) {
           s->last_drop = current();

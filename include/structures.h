@@ -31,14 +31,11 @@ typedef struct tetramino {
 /**
  * This structure contains 7 arrays, one for
  * each different-shaped tetramino, with their
- * size being the size of the array of the
- * tetramino they represent.
- * This structure also contains an array of type
+ * size being the number of integers of the matrix
+ * of tetramino they represent.
+ * It also contains an array of type
  * tetramino_t of size 7, one position for each
  * tetramino.
- * Coding our tetraminos this way leads to a
- * very easy method to create a tetramino every
- * time we need one.
  */
 
 typedef struct pieces {

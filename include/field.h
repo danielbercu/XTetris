@@ -4,36 +4,24 @@
 #include "structures.h"
 
 /**
- * Creates a new field of height h and length l.
- * The field consists of an array of h * l integers,
- * dynamically allocated.
- * These integers aren't initialized as soon as they are
- * created.
+ * Creates an array of h * l uninitialized values in
+ * dynamic memory.
  */
 
 int *f_create(int h, int l);
 
 /**
- * This is the function that assigns a value to the
- * elements of the field.
- * The empty places are set equal to 0, and the left,
- * right and bottom sides are set equal to 9 as they
- * represent the limit of the field, over which the
- * tetraminos can't go.
+ * Assigns values to the field. 0 stands for an empty
+ * place in the field, 9 stands for its borders.
  */
 
 void f_clear(int *field, int h, int l);
 
 /**
- * Prints one field for call, depending on the int 'mp'
- * which tells it to print the left one or the second one.
- * Basing on this int, this function prints at a given
- * distance one of the two fields, overwriting the borders
- * (the left, right and bottom sides, of value 9) with
- * ASCII characters that resemble lines, and printing
- * the tetraminos on the field with a special character
- * that resembles a block of a certain color (which depends
- * on the number of tetramino, 1 to 7).
+ * If mp is set to 0, prints the left field (singleplayer/
+ * player 1 field), otherwise prints the right field
+ * (player 2 / CPU field) with every spaces occupied by
+ * different tetraminos in different colors.
  */
 
 void f_print(int *field, int mp, settings_t *s);

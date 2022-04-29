@@ -65,7 +65,7 @@ long current();
  * between a drop and the next one.
  */
 
-long points_to_ms(int *points);
+long points_to_ms(int points);
 
 /**
  * Wrapper function for usleep;
