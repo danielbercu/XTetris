@@ -49,4 +49,4 @@ int lowest_empty_row(int *field, int h, int l);
 int consec_spaces_under_lowest(int *field, int l, int ler, int *d_left,
                               int *d_right);
 
-#endif
+#endif /* CPU_H */

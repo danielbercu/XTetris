@@ -52,31 +52,31 @@ tetramino_t t_select(int *pieces, settings_t *s) {
   int h = s->h;
   tetramino_t T;
   if (s->random) {
-    t = 1 + (rand() % 7);
-    if (!pieces[t - 1]) {
+    t = rand() % 7;
+    if (!pieces[t]) {
       valid = 0;
       while (!valid) {
-        t = 1 + (rand() % 7);
-        valid = (pieces[t - 1] != 0);
+        t = rand() % 7;
+        valid = (pieces[t] != 0);
       }
     }
-    pieces[t - 1]--;
-    T = t_create(s->p.Ts[t - 1].data, s->p.Ts[t - 1].size);
+    pieces[t]--;
+    T = t_create(s->p.Ts[t].data, s->p.Ts[t].size);
   } else {
     printf("\033[%d;5H                       \033[%d;5HSeleziona un tetramino: ", h + 18, h + 18);
     scanf("%d", &t);
     printf("\033[%d;4H                               \r", h + 18);
-    if (t > 0 && t < 8 && pieces[t - 1]) {
+    if (t >= 0 && t <= 6 && pieces[t]) {
       pieces[t - 1]--;
-      T = t_create(s->p.Ts[t - 1].data, s->p.Ts[t - 1].size);
+      T = t_create(s->p.Ts[t].data, s->p.Ts[t].size);
     }
-    while (t < 1 || t > 7 || !pieces[t - 1]) {
+    while (t < 0 || t > 6 || !pieces[t]) {
       printf("\033[%d;5H                       \033[%d;5HInserisci un numero valido: ", h + 18, h + 18);
       scanf("%d", &t);
       printf("\033[%d;5H                                        \r", h + 18);
-      if (t > 0 && t < 8 && pieces[t - 1]) {
-        pieces[t - 1]--;
-        T = t_create(s->p.Ts[t - 1].data, s->p.Ts[t - 1].size);
+      if (t >= 0 && t <= 6 && pieces[t]) {
+        pieces[t]--;
+        T = t_create(s->p.Ts[t].data, s->p.Ts[t].size);
       }
       clear();
     }

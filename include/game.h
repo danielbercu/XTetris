@@ -65,4 +65,4 @@ void reverse_lines(int *field, int *count, int h, int l);
 
 void print_remaining_pieces(int *pieces, int h);
 
-#endif
+#endif /* GAME_H */

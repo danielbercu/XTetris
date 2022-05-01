@@ -68,13 +68,19 @@ void cpu_rand_move(int *field, int *pieces, settings_t *s, int d_left, int d_rig
   T = t_select(pieces, s);
   s->random = random_default;
   rand_x = d_left + rand() % d_right;
-  while (t_collision(field, T, rand_x, 0, 'r', l))
-    rand_x--;
-  while (t_collision(field, T, rand_x, 0, 'l', l))
-    rand_x++;
+  /* Some checks for unbugged placement */
   if (pieces[1] != fourpcs_tet)
     rand_x -= 2;
+  while (t_collision(field, T, rand_x, 0, 'r', l) && rand_x > 1 && rand_x < 8)
+    rand_x--;
+  while (t_collision(field, T, rand_x, 0, 'l', l) && rand_x > 1 && rand_x < 8)
+    rand_x++;
+  while (t_collision(field, T, rand_x, 0, 'd', l) && rand_x < 4)
+    rand_x++;
+  while (t_collision(field, T, rand_x, 0, 'd', l) && rand_x > 8)
+    rand_x--;
   print_remaining_pieces(pieces, h);
+  printf("\033[50;70H                                     \033[50;70Hrand;;; rand_x: %d", rand_x);
   t_gravity(field, T, rand_x, 0, 100, s, 1);
   free(T.data);
 }
@@ -238,7 +244,20 @@ void cpu_guess(int *field, int *pieces, settings_t *s) {
     }
     cpu_rand_move(field, pieces, s, d_left, d_right);
     return;
+  /* We are going to use the four shaped tetramino placed
+     horizontally only when we have 4 or 5 consecutive empty
+     spaces, so that our CPU will avoid using sudden piece
+     too much */
   case 4:
+    if (pieces[1]) {
+      T = t_create(s->p.Ts[1].data, s->p.Ts[1].size);
+      t_rotate(T);
+      pieces[1]--;
+      break;
+    }
+    cpu_rand_move(field, pieces, s, d_left, d_right);
+    return;
+  case 5:
     if (pieces[1]) {
       T = t_create(s->p.Ts[1].data, s->p.Ts[1].size);
       t_rotate(T);
@@ -255,7 +274,12 @@ void cpu_guess(int *field, int *pieces, settings_t *s) {
     d_left--;
   while (t_collision(field, T, d_left, 0, 'l', l))
     d_left++;
+  while (t_collision(field, T, d_left, 0, 'd', l) && d_left < 4)
+    d_left++;
+  while (t_collision(field, T, d_left, 0, 'd', l) && d_left > 8)
+    d_left--;
   print_remaining_pieces(pieces, h);
+  printf("\033[50;70H                                   \033[50;70Hguess;;; d_left = %d, d_right = %d", d_left, d_right);
   t_gravity(field, T, d_left, 0, 100, s, 1);
   free(T.data);
 }

@@ -35,4 +35,4 @@ void f_print(int *field, int mp, settings_t *s);
 
 void f_lower(int *field, int h, int l);
 
-#endif
+#endif /* FIELD_H */

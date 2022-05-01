@@ -156,4 +156,4 @@ typedef struct settings {
 
 } settings_t;
 
-#endif
+#endif /* STRUCTURES_H */

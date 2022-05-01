@@ -88,4 +88,4 @@ void t_gravity(int *field, tetramino_t t, int x, int y, int ms, settings_t *s,
 void t_move(int *field, tetramino_t t, int x, int y, int mp, int *points,
             settings_t *s);
 
-#endif
+#endif /* TETRAMINO_H */

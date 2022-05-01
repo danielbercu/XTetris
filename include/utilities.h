@@ -1,5 +1,5 @@
-#ifndef UTILS_H
-#define UTILS_H
+#ifndef UTILITIES_H
+#define UTILITIES_H
 
 #include "structures.h"
 
@@ -96,4 +96,4 @@ void raw_disable(settings_t *s);
 
 char select_char();
 
-#endif
+#endif /* UTILITES_H */
