@@ -80,7 +80,6 @@ void cpu_rand_move(int *field, int *pieces, settings_t *s, int d_left, int d_rig
   while (t_collision(field, T, rand_x, 0, 'd', l) && rand_x > 8)
     rand_x--;
   print_remaining_pieces(pieces, h);
-  printf("\033[50;70H                                     \033[50;70Hrand;;; rand_x: %d", rand_x);
   t_gravity(field, T, rand_x, 0, 100, s, 1);
   free(T.data);
 }
@@ -279,7 +278,6 @@ void cpu_guess(int *field, int *pieces, settings_t *s) {
   while (t_collision(field, T, d_left, 0, 'd', l) && d_left > 8)
     d_left--;
   print_remaining_pieces(pieces, h);
-  printf("\033[50;70H                                   \033[50;70Hguess;;; d_left = %d, d_right = %d", d_left, d_right);
   t_gravity(field, T, d_left, 0, 100, s, 1);
   free(T.data);
 }
