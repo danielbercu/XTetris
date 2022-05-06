@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
 
 #include "cpu.h"
 #include "field.h"
@@ -67,6 +68,7 @@ void cpu_rand_move(int *field, int *pieces, settings_t *s, int d_left, int d_rig
   s->random = 1;
   T = t_select(pieces, s);
   s->random = random_default;
+  srand(time(0));
   rand_x = d_left + rand() % d_right;
   /* Some checks for unbugged placement */
   if (pieces[1] != fourpcs_tet)

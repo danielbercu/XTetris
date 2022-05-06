@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "field.h"
 #include "structures.h"
@@ -51,6 +52,7 @@ tetramino_t t_select(int *pieces, settings_t *s) {
   int t, valid;
   int h = s->h;
   tetramino_t T;
+  srand(time(0));
   if (s->random) {
     t = rand() % 7;
     if (!pieces[t]) {
