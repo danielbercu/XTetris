@@ -24,7 +24,8 @@ void t_rotate(tetramino_t t) {
   tetramino_t temp = t_create(t.data, t.size);
   for (i = 0; i < e; i++)
     for (j = 0; j < e; j++)
-      t.data[j + i * e] = temp.data[j * e + e - i - 1];
+      t.data[j + i * e] = temp.data[(e - 1 - j) * e + i];     /*  Counter-clockwise: t.data[j + i * e] = temp.data[(j + 1) * e - i - 1];
+                                                              /*  Clockwise:         t.data[j + i * e] = temp.data[(e - 1 - j) * e + i];  */
   free(temp.data);
 }
 
