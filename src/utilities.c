@@ -60,11 +60,11 @@ long points_to_ms(int points) {
   if (points >= 16 && points < 24)
     res = 400000;
   if (points >= 24 && points < 32)
-    res = 300000;
+    res = 350000;
   if (points >= 32 && points < 40)
-    res = 250000;
+    res = 300000;
   if (points >= 40)
-    res = 200000;
+    res = 250000;
   return res;
 }
 
