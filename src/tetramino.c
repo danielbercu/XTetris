@@ -74,16 +74,18 @@ tetramino_t t_select(int *pieces, settings_t *s) {
       T = t_create(s->p.Ts[t - 1].data, s->p.Ts[t - 1].size);
     }
     else{
-      while (t < 1 || t > 7 || pieces[t - 1] == 0) {
-        printf("\033[%d;5H                       \033[%d;5HInserisci un numero valido: ", h + 18, h + 18);
-        scanf("%d", &t);
-        printf("\033[%d;5H                                        \r", h + 18);
-        if (t >= 1 && t <= 7 && pieces[t - 1] != 0) {
-          pieces[t - 1]--;
-          T = t_create(s->p.Ts[t - 1].data, s->p.Ts[t - 1].size);
-          break;
+      if (t < 1 || t > 7 || !pieces[t - 1]){
+        while (t < 1 || t > 7 || pieces[t - 1] == 0) {
+          printf("\033[%d;5H                       \033[%d;5HInserisci un numero valido: ", h + 18, h + 18);
+          scanf("%d", &t);
+          printf("\033[%d;5H                                        \r", h + 18);
+          if (t >= 1 && t <= 7 && pieces[t - 1] != 0) {
+            pieces[t - 1]--;
+            T = t_create(s->p.Ts[t - 1].data, s->p.Ts[t - 1].size);
+            break;
+          }
+        clear();
         }
-      clear();
       }
     }
 
