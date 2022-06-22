@@ -1,8 +1,10 @@
 XTetris
 
-	-	Link to repository:	https://github.com/danielbercu/XTetris
+	-	Group number: 036
 
-	-	Team members: Daniel Andrei Bercu (891470)
+	-	Group members: 891470 - Daniel Andrei Bercu
+
+	-	Link to repository:	https://github.com/danielbercu/XTetris
 
 	-	Project Structure:
 		-	build/		:	Executable directory.
