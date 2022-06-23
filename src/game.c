@@ -60,7 +60,7 @@ void count_points(int *field, int *points, int *count, int h, int l) {
 
 void reverse_lines(int *field, int *count, int h, int l) {
   int i, j;
-  if (*count < 4)
+  if (*count < 3)
     return;
   for (i = h - 2; i > h - 2 - *count; i--) {
     for (j = 1; j < l - 1; j++) {

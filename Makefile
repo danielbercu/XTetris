@@ -34,4 +34,4 @@ cpu.o:
 	$(CC) -c $(SRC_DIR)/cpu.c $(INCLUDE) $(CFLAGS) -o $(OBJ_DIR)/cpu.o
 
 clean:
-	rm -r $(OBJ_DIR) $(EXE_DIR) $(DOCS_DIR)
+	rm -rf $(OBJ_DIR) $(EXE_DIR) $(DOCS_DIR)
