@@ -2,11 +2,11 @@
 
 A simple Tetris reworkツ
 
-## Group number: 036
+### Group number: 036
 
-## Group members: 891470 - Daniel Andrei Bercu
+### Group members: 891470 - Daniel Andrei Bercu
 
-## Project Structure:
+### Project Structure:
 
 - build/   :   Executable directory.
 - docs/    :   Doxygen generated documentation.
@@ -15,7 +15,7 @@ A simple Tetris reworkツ
 - include/ :   Header files directory.
 - obj/     :   Object files directory.
 
-## Build and Run:
+### Build and Run:
 
 ```shell
 $ make
@@ -23,5 +23,5 @@ $ cd build
 $ ./xtetris
 ```
 
-## [Link to repository](https://github.com/danielbercu/XTetris)
+### [Link to repository](https://github.com/danielbercu/XTetris)
 
