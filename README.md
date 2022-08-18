@@ -1,5 +1,7 @@
 # XTetris
 
+A simple Tetris reworkツ
+
 ## Group number: 036
 
 ## Group members: 891470 - Daniel Andrei Bercu
