@@ -24,4 +24,3 @@ $ ./xtetris
 ```
 
 ### [Link to repository](https://github.com/danielbercu/XTetris)
-
